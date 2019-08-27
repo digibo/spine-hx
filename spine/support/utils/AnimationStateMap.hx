@@ -1,34 +1,36 @@
 package spine.support.utils;
 
-abstract ObjectMap<K,V>(Map<Int,Array<Entry<K,V>>>) {
+import spine.AnimationStateData.AnimationStateDataKey;
+
+abstract AnimationStateMap(Map<Int,Array<Entry<AnimationStateDataKey,Float>>>) {
 
     inline public function new() {
         this = new Map();
     }
 
-    public function get(key:K, defaultValue:V = null):V {
-        var dKey:Dynamic = key;
-        var entries = this.get(dKey.getHashCode());
+    #if !spine_no_inline inline #end public function get(key:AnimationStateDataKey, defaultValue:Float = 0.0):Float {
+        var entries = this.get(key.getHashCode());
+        var result:Float = defaultValue;
         if (entries != null) {
-            for (entry in entries) {
-                var dEntryKey:Dynamic = entry.key;
-                if (dEntryKey.equals(key)) {
-                    return entry.value;
+            for (i in 0...entries.length) {
+                var entry = entries.unsafeGet(i);
+                if (entry.key.equals(key)) {
+                    result = entry.value;
+                    break;
                 }
             }
         }
-        return null;
+        return result;
     }
 
-    inline public function clear():Void {
+    #if !spine_no_inline inline #end public function clear():Void {
         var keys = [];
         for (key in this.keys()) keys.push(key);
         for (key in keys) this.remove(key);
     }
 
-    public function put(key:K, value:V):Void {
-        var dKey:Dynamic = key;
-        var hashCode = dKey.getHashCode();
+    public function put(key:AnimationStateDataKey, value:Float):Void {
+        var hashCode = key.getHashCode();
         var entries = this.get(hashCode);
         if (entries == null) {
             entries = [];
@@ -37,8 +39,7 @@ abstract ObjectMap<K,V>(Map<Int,Array<Entry<K,V>>>) {
         var i = 0;
         var didSet = false;
         for (entry in entries) {
-            var dEntryKey:Dynamic = entry.key;
-            if (dEntryKey.equals(key)) {
+            if (entry.key.equals(key)) {
                 entries[i].key = key;
                 entries[i].value = value;
                 didSet = true;
@@ -75,15 +76,15 @@ abstract ObjectMap<K,V>(Map<Int,Array<Entry<K,V>>>) {
 
 }
 
-@:allow(spine.support.utils.ObjectMap)
+@:allow(spine.support.utils.AnimationStateMap)
 @:structInit
-class Entry<K,V> {
+private class Entry<AnimationStateDataKey,Float> {
 
-    public var key(default,null):K;
+    public var key(default,null):AnimationStateDataKey;
 
-    public var value(default,null):V;
+    public var value(default,null):Float;
 
-    public function new(key:K, value:V) {
+    public function new(key:AnimationStateDataKey, value:Float) {
         this.key = key;
         this.value = value;
     }

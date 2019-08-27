@@ -27,12 +27,12 @@ class Convert {
         }
         else {
             println('Clone official spine-runtimes repository\u2026');
-            command('git', ['clone', '-b', '3.6', '--depth', '1', 'https://github.com/EsotericSoftware/spine-runtimes.git']);
+            command('git', ['clone', '-b', '3.7', '--depth', '1', 'https://github.com/EsotericSoftware/spine-runtimes.git']);
         }
 
         // Delete previously converted files
         println('Delete previously converted files\u2026');
-        deleteRecursive('spine', 'support');
+        deleteRecursive('spine', ['support', 'SkeletonBinary.hx']);
 
         // Convert
         var ctx = {
@@ -2231,7 +2231,10 @@ using StringTools;
 
         // Per-file patches
         if (rootType == 'spine.AnimationStateData') {
-            haxe = haxe.replace('class Key {', 'private class Key {');
+            haxe = haxe.replace('import spine.support.utils.ObjectFloatMap', 'import spine.support.utils.AnimationStateMap');
+            haxe = haxe.replace('ObjectFloatMap<Key>', 'AnimationStateMap');
+            haxe = haxe.replace('ObjectFloatMap', 'AnimationStateMap');
+            haxe = haxe.replace('Key', 'AnimationStateDataKey');
             haxe = haxe.replace('setMix(fromName:String, toName:String, duration:Float)', 'setMixByName(fromName:String, toName:String, duration:Float)');
         }
         else if (rootType == 'spine.AnimationState') {
@@ -2242,8 +2245,11 @@ using StringTools;
         else if (rootType == 'spine.Animation') {
             haxe = haxe.replace('binarySearch(values:FloatArray, target:Float, step:Int)', 'binarySearchWithStep(values:FloatArray, target:Float, step:Int)');
             haxe = haxe.replace('class Animation {', 'class Animation {\n    private var hashCode = Std.int(Math.random() * 99999999);\n');
+            haxe = haxe.replace('System.arraycopy(lastVertices', 'Array.copyFloats(lastVertices');
         }
         else if (rootType == 'spine.Skeleton') {
+            haxe = haxe.replace('ObjectMap<Key,Attachment>', 'AttachmentMap');
+            haxe = haxe.replace('ObjectMap', 'AttachmentMap');
             haxe = haxe.replace('updateCache', 'cache');
             haxe = haxe.replace('cache()', 'updateCache()');
             haxe = haxe.replace('sortPathConstraintAttachment(skin:Skin, slotIndex:Int, slotBone:Bone)', 'sortPathConstraintAttachmentWithSkin(skin:Skin, slotIndex:Int, slotBone:Bone)');
@@ -2255,8 +2261,8 @@ using StringTools;
             haxe = haxe.replace('sortPathConstraintAttachment(data.skins.', 'sortPathConstraintAttachmentWithSkin(data.skins.');
         }
         else if (rootType == 'spine.IkConstraint') {
-            haxe = haxe.replace('apply(bone:Bone, targetX:Float, targetY:Float, alpha:Float)', 'applyOne(bone:Bone, targetX:Float, targetY:Float, alpha:Float)');
-            haxe = haxe.replace('apply(parent:Bone, child:Bone, targetX:Float, targetY:Float, bendDir:Int, alpha:Float)', 'applyTwo(parent:Bone, child:Bone, targetX:Float, targetY:Float, bendDir:Int, alpha:Float)');
+            haxe = haxe.replace('apply(bone:Bone, targetX:Float, targetY:Float, compress:Bool, stretch:Bool, uniform:Bool, alpha:Float)', 'applyOne(bone:Bone, targetX:Float, targetY:Float, compress:Bool, stretch:Bool, uniform:Bool, alpha:Float)');
+            haxe = haxe.replace('apply(parent:Bone, child:Bone, targetX:Float, targetY:Float, bendDir:Int, stretch:Bool, alpha:Float)', 'applyTwo(parent:Bone, child:Bone, targetX:Float, targetY:Float, bendDir:Int, stretch:Bool, alpha:Float)');
         }
         else if (rootType == 'spine.Bone') {
             haxe = haxe.replace('updateWorldTransform(', 'updateWorldTransformWithData(');
@@ -2264,6 +2270,7 @@ using StringTools;
             haxe = haxe.replace('setScale(scale:Float)', 'setScale2(scale:Float)');
             haxe = haxe.replace(' cos(', ' Math.cos(');
             haxe = haxe.replace(' sin(', ' Math.sin(');
+            haxe = haxe.replace('(skeleton.scaleX < 0 != skeleton.scaleY < 0)', '((skeleton.scaleX < 0) != (skeleton.scaleY < 0))');
         }
         else if (rootType == 'spine.SkeletonBounds') {
             haxe = haxe.replace('containsPoint(polygon:FloatArray, x:Float, y:Float)', 'polygonContainsPoint(polygon:FloatArray, x:Float, y:Float)');
@@ -2279,6 +2286,14 @@ using StringTools;
         }
         else if (rootType == 'spine.BlendMode') {
             haxe = haxe.replace('import spine.support.graphics.GL20;', '');
+        }
+        else if (rootType == 'spine.Skin') {
+            haxe = haxe.replace('ObjectMap<Key,Attachment>', 'AttachmentMap');
+            haxe = haxe.replace('ObjectMap', 'AttachmentMap');
+            haxe = haxe.replace('hashCode = 31 * (31 + name.hashCode()) + slotIndex;', 'hashCode = Std.int(31 * (31 + name.hashCode()) + slotIndex);');
+        }
+        else if (rootType == 'spine.attachments.VertexAttachment') {
+            haxe = haxe.replace('nextID()', 'getNextID()');
         }
 
         // Convert enums valueOf() / name() / ordinal()
@@ -2589,6 +2604,8 @@ using StringTools;
                         
                         var newLine = line.replace('applyOne(', 'applyTwo(');
                         newLine = newLine.replace('apply(', 'applyOne(');
+                        newLine = newLine.replace('.clear(1024)', '.clear()');
+                        newLine = newLine.replace('.clear(2048)', '.clear()');
                         newLine = newLine.replace('Animation.binarySearch(', 'Animation.binarySearchWithStep(');
 
                         // Add new change
@@ -2947,7 +2964,7 @@ using StringTools;
 
     } //replaceStart
 
-    static function deleteRecursive(path:String, ?except:String) {
+    static function deleteRecursive(path:String, ?except:Array<String>) {
 
         if (!FileSystem.exists(path)) {
             return;
@@ -2955,7 +2972,7 @@ using StringTools;
         else if (FileSystem.isDirectory(path)) {
             var hasException = false;
             for (name in FileSystem.readDirectory(path)) {
-                if (except == null || name != except) {
+                if (except == null || except.indexOf(name) == -1) {
                     deleteRecursive(Path.join([path, name]));
                 }
                 else if (except != null) {
@@ -3236,9 +3253,9 @@ using StringTools;
     static var RE_WORD = ~/^[a-zA-Z0-9_]+/;
     static var RE_STRING = ~/^(?:"(?:[^"\\]*(?:\\.[^"\\]*)*)"|'(?:[^'\\]*(?:\\.[^'\\]*)*)')/;
     static var RE_IMPORT = ~/^import\s+(static\s+)?([^;\s]+)\s*;/;
-    static var RE_PROPERTY = ~/^((?:(?:public|private|protected|static|final|dynamic)\s+)+)?([a-zA-Z0-9,<>\[\]_]+)\s+([a-zA-Z0-9_]+)\s*(;|=|,)/;
+    static var RE_PROPERTY = ~/^((?:(?:public|private|protected|static|final|dynamic|volatile)\s+)+)?([a-zA-Z0-9,<>\[\]_]+)\s+([a-zA-Z0-9_]+)\s*(;|=|,)/;
     static var RE_CONSTRUCTOR = ~/^((?:(?:public|private|protected|final)\s+)+)?([a-zA-Z0-9,<>\[\]_]+)\s*\(\s*([^\)]*)\s*\)\s*{/;
-    static var RE_METHOD = ~/^((?:(?:public|private|protected|static|final)\s+)+)?([a-zA-Z0-9,<>\[\]_]+)\s+([a-zA-Z0-9_]+)\s*\(\s*([^\)]*)\s*\)\s*({|;)/;
+    static var RE_METHOD = ~/^((?:(?:public|private|protected|static|final|synchronized)\s+)+)?([a-zA-Z0-9,<>\[\]_]+)\s+([a-zA-Z0-9_]+)\s*\(\s*([^\)]*)\s*\)\s*({|;)/;
     static var RE_VAR = ~/^(?:([a-zA-Z0-9_\[\]]+(?:<[a-zA-Z0-9_,<>\[\]]*>)?)\s+)?([a-zA-Z0-9_]+)\s*(;|=|,)/;
     static var RE_DECL = ~/^((?:(?:public|private|protected|static|final|abstract)\s+)+)?(enum|interface|class)\s+([a-zA-Z0-9,<>\[\]_]+)((?:\s+(?:implements|extends)\s*(?:[a-zA-Z0-9,<>\[\]_]+)(?:\s*,\s*[a-zA-Z0-9,<>\[\]_]+)*)*)\s*{/;
     static var RE_HAXE_DECL = ~/^((?:(?:public|private|protected|static|final|abstract|@:enum)\s+)+)?(enum|interface|class|abstract)\s+([a-zA-Z0-9,<>\[\]_]+)/;

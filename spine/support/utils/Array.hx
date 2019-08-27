@@ -4,9 +4,30 @@ package spine.support.utils;
 abstract Array<T>(std.Array<T>) from std.Array<T> to std.Array<T> {
 
     public static function copy<T>(src:std.Array<T>, srcPos:Int, dest:std.Array<T>, destPos:Int, length:Int) {
-        for (i in 0...length) {
+        var val;
+        var srcIndex = srcPos;
+        var destIndex = destPos;
+        var end = length + srcPos;
+        while (srcIndex < end) {
             //dest[i + destPos] = src[i + srcPos];
-            dest.unsafeSet(i + destPos, src.unsafeGet(i + srcPos));
+            val = src.unsafeGet(srcIndex);
+            dest.unsafeSet(destIndex, val);
+            srcIndex++;
+            destIndex++;
+        }
+    }
+
+    public static function copyFloats(src:std.Array<Float>, srcPos:Int, dest:std.Array<Float>, destPos:Int, length:Int) {
+        var val:Float;
+        var srcIndex = srcPos;
+        var destIndex = destPos;
+        var end = length + srcPos;
+        while (srcIndex < end) {
+            //dest[i + destPos] = src[i + srcPos];
+            val = src.unsafeGet(srcIndex);
+            dest.unsafeSet(destIndex, val);
+            srcIndex++;
+            destIndex++;
         }
     }
 
@@ -68,7 +89,11 @@ abstract Array<T>(std.Array<T>) from std.Array<T> to std.Array<T> {
     }
 
     inline public function clear():Void {
+        #if cpp
+        untyped this.__SetSize(0);
+        #else
         this.splice(0, this.length);
+        #end
     }
 
     inline public function first():T {
@@ -110,9 +135,11 @@ abstract Array<T>(std.Array<T>) from std.Array<T> to std.Array<T> {
         var i = this.length;
         var len = i + items.length;
         setSize(len);
-        for (item in items) {
+        var val;
+        for (j in 0...items.length) {
             //this[i++] = item;
-            this.unsafeSet(i++, item);
+            val = items.unsafeGet(j);
+            this.unsafeSet(i++, val);
             if (--count <= 0) break;
         }
     }

@@ -354,4 +354,20 @@ class AtlasRegion extends TextureRegion
     {
         super();
     }
+
+    inline public function getTexture() : AtlasRegionTexture {
+        return this;
+    }
+}
+
+abstract AtlasRegionTexture(AtlasRegion) from AtlasRegion to AtlasRegion {
+
+    inline public function getWidth() : Int {
+        return this.page.width;
+    }
+
+    inline public function getHeight() : Int {
+        return this.page.height;
+    }
+
 }

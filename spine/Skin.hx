@@ -31,9 +31,10 @@
 package spine;
 
 import spine.support.utils.Array;
-import spine.support.utils.ObjectMap;
-import spine.support.utils.ObjectMap.Entry;
+import spine.support.utils.AttachmentMap;
+import spine.support.utils.AttachmentMap.Entry;
 import spine.support.utils.Pool;
+
 import spine.attachments.Attachment;
 
 /** Stores attachments by slot index and attachment name.
@@ -42,7 +43,7 @@ import spine.attachments.Attachment;
  * <a href="http://esotericsoftware.com/spine-runtime-skins">Runtime skins</a> in the Spine Runtimes Guide. */
 class Skin {
     public var name:String;
-    public var attachments:ObjectMap<Key,Attachment> = new ObjectMap();
+    public var attachments:AttachmentMap = new AttachmentMap();
     private var lookup:Key = new Key();
     public var keyPool:Pool<Key> = new KeyPool(64);
 
@@ -73,6 +74,15 @@ class Skin {
         return attachments.get(lookup);
     }
 
+    /** Removes the attachment in the skin for the specified slot index and name, if any. */
+    #if !spine_no_inline inline #end public function removeAttachment(slotIndex:Int, name:String):Void {
+        if (slotIndex < 0) throw new IllegalArgumentException("slotIndex must be >= 0.");
+        var key:Key = keyPool.obtain();
+        key.set(slotIndex, name);
+        attachments.remove(key);
+        keyPool.free(key);
+    }
+
     #if !spine_no_inline inline #end public function findNamesForSlot(slotIndex:Int, names:Array<String>):Void {
         if (names == null) throw new IllegalArgumentException("names cannot be null.");
         if (slotIndex < 0) throw new IllegalArgumentException("slotIndex must be >= 0.");
@@ -91,6 +101,10 @@ class Skin {
         for (key in attachments.keys()) {
             keyPool.free(key); }
         attachments.clear();
+    }
+
+    #if !spine_no_inline inline #end public function size():Int {
+        return attachments.size;
     }
 
     /** The skin's name, which is unique within the skeleton. */
@@ -124,7 +138,7 @@ class Key {
         if (name == null) throw new IllegalArgumentException("name cannot be null.");
         this.slotIndex = slotIndex;
         this.name = name;
-        hashCode = 31 * (31 + name.getHashCode()) + slotIndex;
+        hashCode = name.getHashCode() + slotIndex * 37;
     }
 
     #if !spine_no_inline inline #end public function getHashCode():Int {
